@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "homepage": "https://DaniilKarunou.github.io/muscle-learner-web",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
