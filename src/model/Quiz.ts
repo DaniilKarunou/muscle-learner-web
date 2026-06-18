@@ -2,6 +2,7 @@ import type { Scope } from "./Scope";
 
 export const quizModes = [
     "mixed",
+    "movement",
     "function",
     "attachmentProximal",
     "attachmentDistal",

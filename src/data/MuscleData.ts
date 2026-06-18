@@ -1,11 +1,6 @@
-import externalOblique from "../assets/external_oblique.png";
-import internalOblique from "../assets/internal_oblique.png";
-import scalenusAnterior from "../assets/scalenus_anterior.png";
-import scalenusMiddle from "../assets/scalenus_middle.png";
-import scalenusPosterior from "../assets/scalenus_posterior.png";
-import sternocleidomastoid from "../assets/sternocleidomastoid.png";
 import type { Muscle, MuscleDifficulty, MuscleMedia, MuscleSystem } from "../model/Muscle";
 import { muscleAsset } from "./muscleAssetCatalog";
+import { muscleContentBank } from "./muscleContentBank";
 
 function imageMedia(src: string, alt: string, caption?: string): MuscleMedia {
     return {
@@ -25,6 +20,34 @@ function gifMedia(src: string, alt: string, caption?: string): MuscleMedia {
     };
 }
 
+function remoteImage(src: string, alt: string, sourceUrl: string, caption?: string): MuscleMedia {
+    return {
+        src,
+        kind: "image",
+        alt,
+        caption,
+        sourceUrl,
+    };
+}
+
+function remoteGif(src: string, alt: string, sourceUrl: string, caption?: string): MuscleMedia {
+    return {
+        src,
+        kind: "gif",
+        alt,
+        caption,
+        sourceUrl,
+    };
+}
+
+function wikimediaFilePath(fileName: string): string {
+    return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName)}`;
+}
+
+function wikimediaFileUrl(fileName: string): string {
+    return `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(fileName).replace(/%20/g, "_")}`;
+}
+
 function buildMuscle(entry: {
     id: number;
     slug: string;
@@ -36,11 +59,17 @@ function buildMuscle(entry: {
     attachmentProximal: string;
     attachmentDistal: string;
     tags: string[];
+    actions?: string[];
+    movementExamples?: string[];
     difficulty?: MuscleDifficulty;
     media: MuscleMedia[];
 }): Muscle {
+    const content = muscleContentBank[entry.slug];
+
     return {
         ...entry,
+        ...content,
+        media: content?.media ?? entry.media,
         difficulty: entry.difficulty ?? "podstawowy",
     };
 }
@@ -51,15 +80,6 @@ function atlasImage(path: string, alt: string, caption?: string): MuscleMedia {
 
 function atlasGif(path: string, alt: string, caption?: string): MuscleMedia {
     return gifMedia(muscleAsset(path), alt, caption);
-}
-
-function placeholderMedia(alt: string, kind: MuscleMedia["kind"] = "image"): MuscleMedia {
-    return {
-        src: "",
-        kind,
-        alt,
-        placeholder: true,
-    };
 }
 
 export const MuscleData: { muscleSystems: MuscleSystem[] } = {
@@ -91,7 +111,13 @@ export const MuscleData: { muscleSystems: MuscleSystem[] } = {
                                     attachmentProximal: "Rękojeść mostka i przyśrodkowa część obojczyka",
                                     attachmentDistal: "Wyrostek sutkowaty kości skroniowej",
                                     tags: ["rotacja głowy", "zgięcie szyi", "palpacja"],
-                                    media: [imageMedia(sternocleidomastoid, "Ilustracja mięśnia mostkowo-obojczykowo-sutkowego")],
+                                    actions: ["rotacja głowy w stronę przeciwną", "zgięcie szyi", "pomocniczy wdech"],
+                                    movementExamples: [
+                                        "Odwracanie głowy, kiedy patrzysz za siebie przez ramię.",
+                                        "Przyciąganie brody do mostka przy zgięciu szyi.",
+                                        "Pomocnicza praca przy pogłębionym wdechu, gdy szyja jest ustabilizowana.",
+                                    ],
+                                    media: [atlasImage("szyja/sternocleidomastoid.png", "Ilustracja mięśnia mostkowo-obojczykowo-sutkowego")],
                                 }),
                                 buildMuscle({
                                     id: 2,
@@ -104,8 +130,14 @@ export const MuscleData: { muscleSystems: MuscleSystem[] } = {
                                     attachmentProximal: "Guzki przednie wyrostków poprzecznych C3-C6",
                                     attachmentDistal: "Górna powierzchnia pierwszego żebra",
                                     tags: ["zgięcie szyi", "oddech", "stabilizacja"],
+                                    actions: ["zgięcie szyi", "boczne zgięcie szyi", "unoszenie pierwszego żebra"],
+                                    movementExamples: [
+                                        "Lekkie pochylenie szyi do przodu podczas ustawiania głowy nad tułowiem.",
+                                        "Pochylenie głowy do boku przy stabilnym barku.",
+                                        "Pomocnicze unoszenie żeber przy głębokim wdechu.",
+                                    ],
                                     difficulty: "średni",
-                                    media: [imageMedia(scalenusAnterior, "Ilustracja mięśnia pochyłego przedniego")],
+                                    media: [atlasImage("szyja/scalenus_anterior.png", "Ilustracja mięśnia pochyłego przedniego")],
                                 }),
                                 buildMuscle({
                                     id: 3,
@@ -118,8 +150,14 @@ export const MuscleData: { muscleSystems: MuscleSystem[] } = {
                                     attachmentProximal: "Guzki tylne wyrostków poprzecznych C2-C7",
                                     attachmentDistal: "Górna powierzchnia pierwszego żebra za bruzdą tętnicy podobojczykowej",
                                     tags: ["zgięcie boczne", "oddech", "anatomia topograficzna"],
+                                    actions: ["boczne zgięcie szyi", "stabilizacja szyi", "unoszenie pierwszego żebra"],
+                                    movementExamples: [
+                                        "Przechylenie głowy w bok przy zachowaniu kontroli odcinka szyjnego.",
+                                        "Stabilizacja szyi podczas dłuższego siedzenia albo pracy przy biurku.",
+                                        "Wspomaganie wdechu przez uniesienie pierwszego żebra.",
+                                    ],
                                     difficulty: "średni",
-                                    media: [imageMedia(scalenusMiddle, "Ilustracja mięśnia pochyłego środkowego")],
+                                    media: [atlasImage("szyja/scalenus_middle.png", "Ilustracja mięśnia pochyłego środkowego")],
                                 }),
                                 buildMuscle({
                                     id: 4,
@@ -132,8 +170,103 @@ export const MuscleData: { muscleSystems: MuscleSystem[] } = {
                                     attachmentProximal: "Guzki tylne wyrostków poprzecznych C4-C6",
                                     attachmentDistal: "Zewnętrzna powierzchnia drugiego żebra",
                                     tags: ["zgięcie boczne", "oddech", "mięśnie boczne szyi"],
+                                    actions: ["boczne zgięcie szyi", "unoszenie drugiego żebra"],
+                                    movementExamples: [
+                                        "Pochylenie głowy do boku przy pracy mięśni bocznej ściany szyi.",
+                                        "Pomocnicza praca oddechowa przy nasilonym wdechu.",
+                                    ],
                                     difficulty: "średni",
-                                    media: [imageMedia(scalenusPosterior, "Ilustracja mięśnia pochyłego tylnego")],
+                                    media: [atlasImage("szyja/scalenus_posterior.png", "Ilustracja mięśnia pochyłego tylnego")],
+                                }),
+                            ],
+                        },
+                        {
+                            id: 1002,
+                            name: "Mięśnie podgnykowe szyi",
+                            description: "Mięśnie obniżające kość gnykową i stabilizujące przód szyi przy połykaniu oraz fonacji.",
+                            muscles: [
+                                buildMuscle({
+                                    id: 207,
+                                    slug: "mostkowo-gnykowy",
+                                    name: "Mięsień mostkowo-gnykowy",
+                                    latinName: "Sternohyoideus",
+                                    region: "Szyja",
+                                    subGroup: "Mięśnie podgnykowe szyi",
+                                    function: "Obniża kość gnykową po połknięciu i stabilizuje przód szyi.",
+                                    attachmentProximal: "Tylna powierzchnia rękojeści mostka i koniec mostkowy obojczyka",
+                                    attachmentDistal: "Trzon kości gnykowej",
+                                    tags: ["połykanie", "kość gnykowa", "przód szyi"],
+                                    actions: ["obniżanie kości gnykowej", "stabilizacja przodu szyi"],
+                                    movementExamples: [
+                                        "Kontrola obniżania kości gnykowej po zakończeniu połykania.",
+                                        "Stabilizacja przedniej ściany szyi podczas mowy i pracy krtani.",
+                                    ],
+                                    media: [
+                                        remoteImage(
+                                            wikimediaFilePath("Gray — musculus sternohyoideus.png"),
+                                            "Schemat mięśnia mostkowo-gnykowego",
+                                            wikimediaFileUrl("Gray — musculus sternohyoideus.png"),
+                                            "Wikimedia Commons",
+                                        ),
+                                    ],
+                                }),
+                                buildMuscle({
+                                    id: 208,
+                                    slug: "lopatkowo-gnykowy",
+                                    name: "Mięsień łopatkowo-gnykowy",
+                                    latinName: "Omohyoideus",
+                                    region: "Szyja",
+                                    subGroup: "Mięśnie podgnykowe szyi",
+                                    function: "Obniża i cofa kość gnykową oraz napina blaszkę przedtchawiczą powięzi szyi.",
+                                    attachmentProximal: "Brzeg górny łopatki w pobliżu wcięcia łopatki",
+                                    attachmentDistal: "Trzon kości gnykowej",
+                                    tags: ["połykanie", "kość gnykowa", "powięź szyi"],
+                                    actions: ["obniżanie kości gnykowej", "cofanie kości gnykowej", "napinanie powięzi szyi"],
+                                    movementExamples: [
+                                        "Współpraca przy obniżaniu kości gnykowej po połknięciu.",
+                                        "Stabilizacja szyi i tkanek przednich podczas ruchu krtani.",
+                                    ],
+                                    media: [
+                                        remoteImage(
+                                            wikimediaFilePath("Gray — musculus omohyoideus.png"),
+                                            "Schemat mięśnia łopatkowo-gnykowego",
+                                            wikimediaFileUrl("Gray — musculus omohyoideus.png"),
+                                            "Wikimedia Commons",
+                                        ),
+                                    ],
+                                }),
+                            ],
+                        },
+                        {
+                            id: 1003,
+                            name: "Mięśnie tylne szyi",
+                            description: "Mięśnie wspierające wyprost, rotację i ustawienie odcinka szyjnego od tyłu.",
+                            muscles: [
+                                buildMuscle({
+                                    id: 209,
+                                    slug: "platowaty-szyi",
+                                    name: "Mięsień płatowaty szyi",
+                                    latinName: "Splenius cervicis",
+                                    region: "Szyja",
+                                    subGroup: "Mięśnie tylne szyi",
+                                    function: "Obustronnie prostuje szyję, a jednostronnie obraca i zgina bocznie szyję w swoją stronę.",
+                                    attachmentProximal: "Wyrostki kolczyste Th3-Th6",
+                                    attachmentDistal: "Guzki tylne wyrostków poprzecznych C1-C3",
+                                    tags: ["wyprost szyi", "rotacja szyi", "tył szyi"],
+                                    actions: ["wyprost szyi", "rotacja szyi w stronę pracującego mięśnia", "boczne zgięcie szyi"],
+                                    movementExamples: [
+                                        "Odchylenie głowy i szyi do tyłu przy patrzeniu do góry.",
+                                        "Rotacja szyi w stronę aktywnego mięśnia przy obracaniu głowy.",
+                                        "Stabilizacja tylnej ściany szyi podczas utrzymania postawy.",
+                                    ],
+                                    media: [
+                                        remoteGif(
+                                            wikimediaFilePath("Splenius cervicis muscle animation.gif"),
+                                            "Animacja mięśnia płatowatego szyi",
+                                            wikimediaFileUrl("Splenius cervicis muscle animation.gif"),
+                                            "Wikimedia Commons",
+                                        ),
+                                    ],
                                 }),
                             ],
                         },
@@ -263,7 +396,14 @@ export const MuscleData: { muscleSystems: MuscleSystem[] } = {
                                     attachmentDistal: "Żebra oraz wyrostki poprzeczne i kolczyste kręgów piersiowych i szyjnych",
                                     tags: ["postawa", "wyprost tułowia", "stabilizacja"],
                                     difficulty: "średni",
-                                    media: [placeholderMedia("Placeholder mięśnia prostownika grzbietu")],
+                                    media: [
+                                        remoteImage(
+                                            wikimediaFilePath("Gray389 - Erector spinae.png"),
+                                            "Schemat mięśnia prostownika grzbietu",
+                                            wikimediaFileUrl("Gray389 - Erector spinae.png"),
+                                            "Wikimedia Commons",
+                                        ),
+                                    ],
                                 }),
                             ],
                         },
@@ -405,7 +545,14 @@ export const MuscleData: { muscleSystems: MuscleSystem[] } = {
                                     attachmentDistal: "Górny brzeg żebra poniżej",
                                     tags: ["wydech", "żebra", "klatka"],
                                     difficulty: "średni",
-                                    media: [placeholderMedia("Placeholder mięśni międzyżebrowych wewnętrznych")],
+                                    media: [
+                                        remoteImage(
+                                            wikimediaFilePath("Internal intercostal muscles back.png"),
+                                            "Schemat mięśni międzyżebrowych wewnętrznych",
+                                            wikimediaFileUrl("Internal intercostal muscles back.png"),
+                                            "Wikimedia Commons",
+                                        ),
+                                    ],
                                 }),
                                 buildMuscle({
                                     id: 203,
@@ -419,7 +566,12 @@ export const MuscleData: { muscleSystems: MuscleSystem[] } = {
                                     attachmentDistal: "Wewnętrzna powierzchnia żeber położonych o jedno lub dwa niżej",
                                     tags: ["wydech", "żebra", "oddech"],
                                     difficulty: "zaawansowany",
-                                    media: [placeholderMedia("Placeholder mięśni podżebrowych")],
+                                    media: [
+                                        atlasImage(
+                                            "klatka_piersiowa/Physiology_and_biochemistry_in_modern_medicine_(1918)_(14758349676).jpg",
+                                            "Rycinowy przekrój przedstawiający mięśnie podżebrowe",
+                                        ),
+                                    ],
                                 }),
                             ],
                         },
@@ -471,7 +623,7 @@ export const MuscleData: { muscleSystems: MuscleSystem[] } = {
                                     attachmentDistal: "Kresa biała, grzebień biodrowy i więzadło pachwinowe",
                                     tags: ["rotacja", "core", "oddech"],
                                     media: [
-                                        imageMedia(externalOblique, "Ilustracja mięśnia skośnego zewnętrznego brzucha"),
+                                        atlasImage("brzuch/external_oblique.png", "Ilustracja mięśnia skośnego zewnętrznego brzucha"),
                                         atlasImage("brzuch/Gray395.png", "Rycina atlasowa warstwy bocznej brzucha"),
                                     ],
                                 }),
@@ -487,7 +639,7 @@ export const MuscleData: { muscleSystems: MuscleSystem[] } = {
                                     attachmentDistal: "Dolne brzegi żeber X-XII i kresa biała",
                                     tags: ["rotacja", "stabilizacja", "core"],
                                     media: [
-                                        imageMedia(internalOblique, "Ilustracja mięśnia skośnego wewnętrznego brzucha"),
+                                        atlasImage("brzuch/internal_oblique.png", "Ilustracja mięśnia skośnego wewnętrznego brzucha"),
                                         atlasImage("brzuch/Gray397.png", "Rycina atlasowa mięśni skośnych i poprzecznych brzucha"),
                                     ],
                                 }),
@@ -562,7 +714,14 @@ export const MuscleData: { muscleSystems: MuscleSystem[] } = {
                                     attachmentDistal: "Wyrostki kolczyste kręgów położonych o dwa do czterech segmentów wyżej",
                                     tags: ["stabilizacja", "kręgosłup", "rotacja"],
                                     difficulty: "zaawansowany",
-                                    media: [placeholderMedia("Placeholder mięśnia wielodzielnego odcinka lędźwiowego")],
+                                    media: [
+                                        remoteImage(
+                                            wikimediaFilePath("Multifidi.png"),
+                                            "Schemat mięśnia wielodzielnego odcinka lędźwiowego",
+                                            wikimediaFileUrl("Multifidi.png"),
+                                            "Wikimedia Commons",
+                                        ),
+                                    ],
                                 }),
                                 buildMuscle({
                                     id: 205,
@@ -576,7 +735,14 @@ export const MuscleData: { muscleSystems: MuscleSystem[] } = {
                                     attachmentDistal: "Nasada łuku i wyrostki kolczyste kręgów położonych wyżej",
                                     tags: ["rotacja", "stabilizacja", "kręgosłup"],
                                     difficulty: "zaawansowany",
-                                    media: [placeholderMedia("Placeholder mięśni skręcających odcinka lędźwiowego")],
+                                    media: [
+                                        remoteImage(
+                                            wikimediaFilePath("Rotatores.png"),
+                                            "Schemat mięśni skręcających odcinka lędźwiowego",
+                                            wikimediaFileUrl("Rotatores.png"),
+                                            "Wikimedia Commons",
+                                        ),
+                                    ],
                                 }),
                             ],
                         },
@@ -983,7 +1149,14 @@ export const MuscleData: { muscleSystems: MuscleSystem[] } = {
                                     attachmentDistal: "Głowa strzałki wspólnie ze ścięgnem mięśnia dwugłowego uda",
                                     tags: ["tył uda", "kolano", "rotacja zewnętrzna"],
                                     difficulty: "średni",
-                                    media: [placeholderMedia("Placeholder głowy krótkiej mięśnia dwugłowego uda")],
+                                    media: [
+                                        remoteGif(
+                                            wikimediaFilePath("Short head of biceps femoris.gif"),
+                                            "Animacja głowy krótkiej mięśnia dwugłowego uda",
+                                            wikimediaFileUrl("Short head of biceps femoris.gif"),
+                                            "Wikimedia Commons",
+                                        ),
+                                    ],
                                 }),
                             ],
                         },

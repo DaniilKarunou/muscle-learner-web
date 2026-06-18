@@ -6,64 +6,89 @@ function addUnique(target: string[], value: string) {
     }
 }
 
+function buildExamplesFromActions(muscle: Muscle): string[] {
+    const examples: string[] = [];
+
+    for (const action of muscle.actions ?? []) {
+        const lowerAction = action.toLowerCase();
+
+        if (lowerAction.includes("rotacja głowy")) {
+            addUnique(examples, "Obrót głowy, kiedy patrzysz przez ramię albo odwracasz się do rozmowy.");
+            continue;
+        }
+
+        if (lowerAction.includes("zgięcie szyi")) {
+            addUnique(examples, "Skłon głowy do przodu, jak przy czytaniu albo przyciąganiu brody do mostka.");
+            continue;
+        }
+
+        if (lowerAction.includes("boczne zgięcie szyi")) {
+            addUnique(examples, "Pochylenie głowy do boku, jak przy zbliżaniu ucha do barku.");
+            continue;
+        }
+
+        if (lowerAction.includes("unoszenie żeber") || lowerAction.includes("wdech")) {
+            addUnique(examples, "Pogłębiony wdech, kiedy obręcz barkowa jest ustabilizowana.");
+            continue;
+        }
+
+        if (lowerAction.includes("retrakcja łopatki")) {
+            addUnique(examples, "Ściąganie barków do tyłu podczas wiosłowania albo poprawy postawy.");
+            continue;
+        }
+
+        if (lowerAction.includes("protrakcja łopatki")) {
+            addUnique(examples, "Wysuwanie barku do przodu, jak przy ciosie albo podporze na rękach.");
+            continue;
+        }
+
+        if (lowerAction.includes("zgięcie biodra")) {
+            addUnique(examples, "Unoszenie kolana do góry podczas chodu, biegu albo wejścia po schodach.");
+            continue;
+        }
+
+        if (lowerAction.includes("zgięcie kolana")) {
+            addUnique(examples, "Przyciąganie pięty w stronę pośladka albo faza przenoszenia nogi w biegu.");
+            continue;
+        }
+
+        if (lowerAction.includes("wyprost kolana")) {
+            addUnique(examples, "Prostowanie kolana przy wstawaniu, kopnięciu albo wypchnięciu z nogi.");
+            continue;
+        }
+
+        if (lowerAction.includes("wyprost tułowia") || lowerAction.includes("wyprost kręgosłupa")) {
+            addUnique(examples, "Utrzymanie wyprostowanej sylwetki podczas stania, martwego ciągu albo unoszenia tułowia.");
+            continue;
+        }
+
+        if (lowerAction.includes("zgięcie podeszwowe")) {
+            addUnique(examples, "Wspięcie na palce i wybicie ze stopy podczas chodu lub skoku.");
+            continue;
+        }
+
+        if (lowerAction.includes("zgięcie grzbietowe")) {
+            addUnique(examples, "Unoszenie przodostopia przy stawianiu kroku i kontroli fazy przenoszenia.");
+            continue;
+        }
+
+        if (lowerAction.includes("chwyt") || lowerAction.includes("palce") || lowerAction.includes("kciuk")) {
+            addUnique(examples, "Precyzyjne ustawienie dłoni przy pisaniu, ścisku albo pracy chwytnej.");
+        }
+    }
+
+    return examples;
+}
+
 export function getMovementExamples(muscle: Muscle): string[] {
     if (muscle.movementExamples && muscle.movementExamples.length > 0) {
         return muscle.movementExamples;
     }
 
-    const lowerFunction = muscle.function.toLowerCase();
-    const lowerTags = muscle.tags.map((tag) => tag.toLowerCase());
-    const examples: string[] = [];
-
-    if (lowerFunction.includes("zgi") && lowerTags.some((tag) => tag.includes("szyi") || tag.includes("głowy"))) {
-        addUnique(examples, "Skłon głowy do przodu albo ustawienie brody bliżej mostka.");
-    }
-    if (lowerFunction.includes("rot") && (lowerTags.some((tag) => tag.includes("głowy")) || muscle.region === "Szyja")) {
-        addUnique(examples, "Obrót głowy, kiedy patrzysz przez ramię.");
-    }
-    if (lowerTags.includes("łopatka") || lowerFunction.includes("łopatk")) {
-        addUnique(examples, "Ściąganie barków do tyłu albo unoszenie obręczy barkowej.");
-    }
-    if (lowerTags.includes("oddech") || lowerFunction.includes("wdech") || lowerFunction.includes("wydech")) {
-        addUnique(examples, "Pogłębiony wdech albo aktywna praca klatki piersiowej przy oddechu.");
-    }
-    if (lowerTags.includes("core") || muscle.region === "Brzuch") {
-        addUnique(examples, "Napinanie brzucha przy planku, siadzie albo ochronie odcinka lędźwiowego.");
-    }
-    if (lowerFunction.includes("przywodzi")) {
-        addUnique(
-            examples,
-            "Dociąganie kończyny do linii ciała, jak przy ściąganiu drążka lub ściskaniu piłki między kolanami.",
-        );
-    }
-    if (lowerFunction.includes("odwodzi")) {
-        addUnique(examples, "Odwodzenie kończyny na bok, jak przy unoszeniu ręki albo nogi.");
-    }
-    if (lowerFunction.includes("prostuje") && muscle.region.includes("Kończyna")) {
-        addUnique(examples, "Wyprost w stawie podczas wypchnięcia ciężaru albo wybicia w chodzie.");
-    }
-    if (lowerFunction.includes("zgina") && muscle.region.includes("Kończyna")) {
-        addUnique(examples, "Zgięcie stawu przy podnoszeniu kończyny, chwytaniu albo przyciąganiu ciężaru.");
-    }
-    if (lowerTags.includes("chwyt") || lowerTags.includes("precyzja") || muscle.subGroup.includes("ręki")) {
-        addUnique(examples, "Precyzyjny chwyt, trzymanie długopisu albo szczypcowy ruch palców.");
-    }
-    if (lowerTags.includes("chód") || muscle.region === "Kończyna dolna") {
-        addUnique(examples, "Stabilizacja i napęd podczas chodu, biegu albo wchodzenia po schodach.");
-    }
-    if (lowerTags.includes("paluch") || lowerTags.includes("stopa")) {
-        addUnique(examples, "Wybicie ze stopy albo kontrola ustawienia stopy i palców przy kroku.");
-    }
-    if (lowerTags.includes("kciuk") || lowerTags.includes("dłoń")) {
-        addUnique(examples, "Ustawienie dłoni i kciuka podczas chwytu, ścisku albo pracy precyzyjnej.");
-    }
-    if (lowerTags.includes("postawa") || lowerTags.includes("stabilizacja")) {
-        addUnique(examples, "Utrzymanie stabilnej postawy i kontroli ustawienia segmentów ciała.");
+    const actionExamples = buildExamplesFromActions(muscle);
+    if (actionExamples.length > 0) {
+        return actionExamples.slice(0, 3);
     }
 
-    if (examples.length === 0) {
-        addUnique(examples, "Ruch opisany w funkcji mięśnia podczas codziennych zadań i nauki palpacyjnej.");
-    }
-
-    return examples.slice(0, 3);
+    return ["Praktyczne przykłady ruchu dla tego mięśnia będą uzupełniane w bazie treści atlasu."];
 }

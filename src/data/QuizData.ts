@@ -1,12 +1,13 @@
 import type { Muscle } from "../model/Muscle";
 import type { QuizMode, QuizQuestion, QuizQuestionKind, QuizSession } from "../model/Quiz";
 import type { Scope } from "../model/Scope";
-import { getAllMuscles, getMusclesByScope, getScopeTitle } from "./muscleSelectors";
+import { findMuscleTrail, getAllMuscles, getMusclesByScope, getScopeTitle } from "./muscleSelectors";
 
-const QUESTION_KINDS: QuizQuestionKind[] = ["function", "attachmentProximal", "attachmentDistal"];
+const QUESTION_KINDS: QuizQuestionKind[] = ["movement", "function", "attachmentProximal", "attachmentDistal"];
 
 const MODE_LABELS: Record<QuizMode, string> = {
     mixed: "Mieszany",
+    movement: "Ruchy",
     function: "Funkcje",
     attachmentProximal: "Przyczep początkowy",
     attachmentDistal: "Przyczep końcowy",
@@ -43,36 +44,93 @@ function shuffleArray<T>(items: T[], rng: () => number): T[] {
 }
 
 function uniqueValues(values: string[]): string[] {
-    return [...new Set(values.filter(Boolean))];
+    return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
-function buildOptions(correctAnswer: string, pool: string[], rng: () => number): string[] {
-    const wrongAnswers = uniqueValues(pool.filter((entry) => entry !== correctAnswer));
+function getPoolValue(muscle: Muscle, kind: QuizQuestionKind): string {
+    if (kind === "movement") {
+        return muscle.actions?.[0] ?? "";
+    }
+
+    if (kind === "function") {
+        return muscle.function;
+    }
+
+    if (kind === "attachmentProximal") {
+        return muscle.attachmentProximal;
+    }
+
+    return muscle.attachmentDistal;
+}
+
+function hasPoolValue(muscle: Muscle, kind: QuizQuestionKind): boolean {
+    return getPoolValue(muscle, kind).length > 0;
+}
+
+function getFallbackMuscles(scope: Scope, muscle: Muscle, scopeMuscles: Muscle[]): Muscle[] {
+    const trail = findMuscleTrail(muscle.id);
+    if (!trail) {
+        return scopeMuscles;
+    }
+
+    if (scope === "subgroup") {
+        return trail.region.subGroups.flatMap((subGroup) => subGroup.muscles);
+    }
+
+    if (scope === "region") {
+        return trail.system.regions.flatMap((region) => region.subGroups.flatMap((subGroup) => subGroup.muscles));
+    }
+
+    return getAllMuscles();
+}
+
+function buildOptions(
+    correctAnswer: string,
+    scopeMuscles: Muscle[],
+    kind: QuizQuestionKind,
+    muscle: Muscle,
+    scope: Scope,
+    rng: () => number,
+): string[] {
+    const scopedPool = uniqueValues(scopeMuscles.filter((entry) => hasPoolValue(entry, kind)).map((entry) => getPoolValue(entry, kind)));
+    const fallbackPool = uniqueValues(
+        getFallbackMuscles(scope, muscle, scopeMuscles)
+            .filter((entry) => hasPoolValue(entry, kind))
+            .map((entry) => getPoolValue(entry, kind)),
+    );
+    const pool = scopedPool.length >= 4 ? scopedPool : uniqueValues([...scopedPool, ...fallbackPool]);
+    const wrongAnswers = pool.filter((entry) => entry !== correctAnswer);
     const sampledWrongAnswers = shuffleArray(wrongAnswers, rng).slice(0, 3);
+
     return shuffleArray(uniqueValues([...sampledWrongAnswers, correctAnswer]), rng);
 }
 
-function toQuestion(muscle: Muscle, kind: QuizQuestionKind, rng: () => number): QuizQuestion {
-    const allMuscles = getAllMuscles();
+function toQuestion(
+    muscle: Muscle,
+    kind: QuizQuestionKind,
+    scopeMuscles: Muscle[],
+    scope: Scope,
+    rng: () => number,
+): QuizQuestion {
     let prompt = "";
     let correctAnswer = "";
-    let answerPool: string[] = [];
     let explanation = "";
 
-    if (kind === "function") {
+    if (kind === "movement") {
+        correctAnswer = getPoolValue(muscle, kind);
+        prompt = `Który ruch najlepiej opisuje działanie mięśnia ${muscle.name}?`;
+        explanation = `${muscle.name}: główny ruch do zapamiętania to ${correctAnswer}. Funkcja mięśnia: ${muscle.function}`;
+    } else if (kind === "function") {
         prompt = `Jaka jest główna funkcja mięśnia ${muscle.name}?`;
         correctAnswer = muscle.function;
-        answerPool = allMuscles.map((entry) => entry.function);
         explanation = `${muscle.name}: ${muscle.function}`;
     } else if (kind === "attachmentProximal") {
         prompt = `Gdzie znajduje się przyczep początkowy mięśnia ${muscle.name}?`;
         correctAnswer = muscle.attachmentProximal;
-        answerPool = allMuscles.map((entry) => entry.attachmentProximal);
         explanation = `${muscle.name}: przyczep początkowy to ${muscle.attachmentProximal}.`;
     } else {
         prompt = `Gdzie znajduje się przyczep końcowy mięśnia ${muscle.name}?`;
         correctAnswer = muscle.attachmentDistal;
-        answerPool = allMuscles.map((entry) => entry.attachmentDistal);
         explanation = `${muscle.name}: przyczep końcowy to ${muscle.attachmentDistal}.`;
     }
 
@@ -82,19 +140,24 @@ function toQuestion(muscle: Muscle, kind: QuizQuestionKind, rng: () => number): 
         muscleName: muscle.name,
         kind,
         prompt,
-        options: buildOptions(correctAnswer, answerPool, rng),
+        options: buildOptions(correctAnswer, scopeMuscles, kind, muscle, scope, rng),
         correctAnswer,
         explanation,
     };
 }
 
-function buildQuestionPool(muscles: Muscle[], kinds: QuizQuestionKind[], rng: () => number): QuizQuestion[] {
+function buildQuestionPool(muscles: Muscle[], kinds: QuizQuestionKind[], scope: Scope, rng: () => number): QuizQuestion[] {
     const shuffledMuscles = shuffleArray(muscles, rng);
     const questions: QuizQuestion[] = [];
 
     for (const muscle of shuffledMuscles) {
-        for (const kind of shuffleArray(kinds, rng)) {
-            questions.push(toQuestion(muscle, kind, rng));
+        const availableKinds = shuffleArray(
+            kinds.filter((kind) => hasPoolValue(muscle, kind)),
+            rng,
+        );
+
+        for (const kind of availableKinds) {
+            questions.push(toQuestion(muscle, kind, muscles, scope, rng));
         }
     }
 
@@ -134,7 +197,11 @@ export function createQuizSession(input: {
     }
 
     const kinds = getQuestionKinds(input.mode);
-    const questions = buildQuestionPool(muscles, kinds, rng).slice(0, input.limit ?? 10);
+    const questions = buildQuestionPool(muscles, kinds, input.scope, rng).slice(0, input.limit ?? 10);
+
+    if (questions.length === 0) {
+        return null;
+    }
 
     return {
         id: `${input.scope}-${input.scopeId}-${input.mode}-${Date.now()}`,

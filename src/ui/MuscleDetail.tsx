@@ -64,6 +64,23 @@ export default function MuscleDetail() {
                                 <span className="font-semibold text-ink-900">Przyczep końcowy:</span>{" "}
                                 {muscle.attachmentDistal}
                             </p>
+
+                            {muscle.actions && muscle.actions.length > 0 ? (
+                                <div className="space-y-2">
+                                    <p className="font-semibold text-ink-900">Główne ruchy</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {muscle.actions.map((action) => (
+                                            <span
+                                                key={action}
+                                                className="rounded-full border border-atlas-100 bg-white/80 px-3 py-2 text-xs font-semibold text-atlas-700"
+                                            >
+                                                {action}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : null}
+
                             <div className="space-y-2">
                                 <p className="font-semibold text-ink-900">Jak ten mięsień pracuje w praktyce</p>
                                 <ul className="space-y-2">
@@ -109,8 +126,8 @@ export default function MuscleDetail() {
                     actions={
                         <>
                             <PrimaryButton onClick={() => navigate(`/subgroup/${subGroup.id}`)}>Wróć do podgrupy</PrimaryButton>
-                            <SecondaryButton onClick={() => navigate(`/quiz/subgroup/${subGroup.id}/attachmentProximal`)}>
-                                Trening przyczepów
+                            <SecondaryButton onClick={() => navigate(`/quiz/subgroup/${subGroup.id}/movement`)}>
+                                Trening ruchów
                             </SecondaryButton>
                         </>
                     }

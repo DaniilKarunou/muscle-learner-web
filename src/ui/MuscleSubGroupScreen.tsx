@@ -33,6 +33,9 @@ export default function MuscleSubGroupScreen() {
                     <PrimaryButton onClick={() => navigate(`/quiz/subgroup/${subGroup.id}/mixed`)}>
                         Quiz podgrupy
                     </PrimaryButton>
+                    <SecondaryButton onClick={() => navigate(`/quiz/subgroup/${subGroup.id}/movement`)}>
+                        Quiz ruchów
+                    </SecondaryButton>
                     <StatBadge label="mięśni" value={subGroup.muscles.length} />
                 </>
             }
