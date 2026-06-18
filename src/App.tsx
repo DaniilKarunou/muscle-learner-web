@@ -1,26 +1,28 @@
-import React from "react";
 import { Routes, Route } from "react-router-dom";
-import MuscleSystemScreen from "./ui/MuscleSystemScreen";
+import Layout from "./ui/Layout";
+import MuscleDetail from "./ui/MuscleDetail";
 import MuscleRegionScreen from "./ui/MuscleRegionScreen";
 import MuscleSubGroupScreen from "./ui/MuscleSubGroupScreen";
-import MuscleDetail from "./ui/MuscleDetail";
+import MuscleSystemScreen from "./ui/MuscleSystemScreen";
+import MuscleSystemDetailScreen from "./ui/MuscleSystemDetailScreen";
 import QuizScreen from "./ui/QuizScreen";
 import QuizResultScreen from "./ui/QuizResultScreen";
-import Layout from "./ui/Layout";
 
-const App: React.FC = () => {
+function App() {
     return (
         <Layout>
             <Routes>
                 <Route path="/" element={<MuscleSystemScreen />} />
+                <Route path="/system/:systemId" element={<MuscleSystemDetailScreen />} />
                 <Route path="/region/:regionId" element={<MuscleRegionScreen />} />
                 <Route path="/subgroup/:subGroupId" element={<MuscleSubGroupScreen />} />
                 <Route path="/detail/:muscleId" element={<MuscleDetail />} />
                 <Route path="/quiz/:scope/:id" element={<QuizScreen />} />
-                <Route path="/quizResult/:score/:total" element={<QuizResultScreen />} />
+                <Route path="/quiz/:scope/:id/:mode" element={<QuizScreen />} />
+                <Route path="/quiz-result" element={<QuizResultScreen />} />
             </Routes>
         </Layout>
     );
-};
+}
 
 export default App;

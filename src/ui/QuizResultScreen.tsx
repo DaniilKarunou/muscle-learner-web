@@ -1,95 +1,148 @@
-import React from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { getLearningRoute } from "../data/muscleSelectors";
+import type { QuizQuestion, QuizResultState } from "../model/Quiz";
+import { PrimaryButton, SecondaryButton } from "./components/ActionButton";
+import EmptyState from "./components/EmptyState";
+import Screen from "./components/Screen";
+import SectionCard from "./components/SectionCard";
+import StatBadge from "./components/StatBadge";
 
-interface AnswerRecord {
-    question: string;
-    selected: string;
-    correct: string;
+function getSummaryLabel(score: number, total: number): string {
+    const percent = total === 0 ? 0 : Math.round((score / total) * 100);
+
+    if (percent >= 90) {
+        return "Świetny poziom";
+    }
+
+    if (percent >= 70) {
+        return "Bardzo dobry progres";
+    }
+
+    if (percent >= 50) {
+        return "Dobra baza do powtórki";
+    }
+
+    return "Warto wrócić do atlasu";
 }
 
-const QuizResultScreen: React.FC = () => {
-    const { score, total } = useParams<{ score: string; total: string }>();
+export default function QuizResultScreen() {
     const navigate = useNavigate();
     const location = useLocation();
-    const answersHistory: AnswerRecord[] = location.state?.answersHistory || [];
+    const result = location.state as QuizResultState | null;
 
-    const primaryGradient = "linear-gradient(135deg, #1976d2, #42a5f5)";
-    const primaryHover = "linear-gradient(135deg, #1565c0, #1e88e5)";
-    const accentGradient = "linear-gradient(135deg, #03dac6, #00bfa5)";
-    const accentHover = "linear-gradient(135deg, #00bfa5, #018786)";
+    if (!result) {
+        return (
+            <EmptyState
+                title="Brak wyniku quizu"
+                description="Ten ekran wymaga aktywnej sesji quizu. Wróć do atlasu i uruchom quiz ponownie."
+                action={<SecondaryButton onClick={() => navigate("/")}>Powrót do atlasu</SecondaryButton>}
+            />
+        );
+    }
 
-    const buttonStyle = (bg: string, color: string) => ({
-        padding: "12px 24px",
-        borderRadius: 12,
-        border: "none",
-        background: bg,
-        color: color,
-        fontWeight: 600,
-        cursor: "pointer",
-        transition: "all 0.3s ease",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-        textAlign: "center" as const,
-        width: "100%",
-        maxWidth: 320,
-    });
-
-    const handleHover = (e: React.MouseEvent<HTMLButtonElement>, hoverBg: string) => {
-        (e.currentTarget as HTMLButtonElement).style.background = hoverBg;
-        (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 16px rgba(0,0,0,0.12)";
-    };
-
-    const handleLeave = (e: React.MouseEvent<HTMLButtonElement>, bg: string) => {
-        (e.currentTarget as HTMLButtonElement).style.background = bg;
-        (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)";
-    };
+    const total = result.session.questions.length;
+    const percent = total === 0 ? 0 : Math.round((result.score / total) * 100);
+    const wrongAnswers = result.answers.filter((answer) => answer.selected !== answer.correct);
+    const wrongQuestions: QuizQuestion[] = result.session.questions.filter((question) =>
+        wrongAnswers.some((answer) => answer.questionId === question.id),
+    );
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 24, width: "100%", alignItems: "center", marginTop: 24 }}>
-            <h1 style={{ color: "#1976d2", fontSize: "2rem", fontWeight: 700, marginBottom: 8, textAlign: "center" }}>
-                Wynik quizu
-            </h1>
-
-            <p style={{ fontSize: 32, fontWeight: 700, marginBottom: 32, color: "#1a1a1a", textAlign: "center" }}>
-                {score} / {total}
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 16, width: "100%", maxWidth: 480 }}>
-                {answersHistory.map((a, idx) => (
-                    <div key={idx} style={{ padding: 12, borderRadius: 12, background: "#f9f9f9", boxShadow: "0 2px 6px rgba(0,0,0,0.08)" }}>
-                        <p style={{ marginBottom: 8, fontWeight: 600 }}>{a.question}</p>
-                        <p>
-                            Twoja odpowiedź: <span style={{ color: a.selected === a.correct ? "#03dac6" : "#b00020", fontWeight: 600 }}>{a.selected}</span>
-                        </p>
-                        {a.selected !== a.correct && (
-                            <p>
-                                Poprawna odpowiedź: <span style={{ color: "#03dac6", fontWeight: 600 }}>{a.correct}</span>
-                            </p>
-                        )}
+        <Screen
+            eyebrow="Wynik sesji"
+            title={result.session.contextTitle}
+            subtitle="Zobacz wynik, przejrzyj tylko to, co wymaga poprawy, i wróć od razu do kolejnej rundy."
+            actions={
+                <>
+                    <StatBadge label="wynik" value={`${result.score}/${total}`} />
+                    <StatBadge label="procent" value={`${percent}%`} />
+                    <StatBadge label="status" value={getSummaryLabel(result.score, total)} />
+                </>
+            }
+        >
+            <div className="grid gap-4 lg:grid-cols-[0.88fr_1.12fr]">
+                <SectionCard
+                    title={wrongAnswers.length === 0 ? "Sesja bez błędów" : "Co robimy dalej?"}
+                    description={
+                        wrongAnswers.length === 0
+                            ? "Świetna robota. Możesz powtórzyć ten sam tryb dla utrwalenia albo wejść poziom wyżej i rozszerzyć zakres."
+                            : "Masz gotową ścieżkę: powtórz tę samą sesję, przerób same błędy albo wróć do nauki w atlasie."
+                    }
+                    actions={
+                        <>
+                            <PrimaryButton
+                                onClick={() =>
+                                    navigate(`/quiz/${result.session.scope}/${result.session.scopeId}/${result.session.mode}`)
+                                }
+                            >
+                                Powtórz tę sesję
+                            </PrimaryButton>
+                            {wrongQuestions.length > 0 ? (
+                                <SecondaryButton
+                                    onClick={() =>
+                                        navigate(`/quiz/${result.session.scope}/${result.session.scopeId}/review`, {
+                                            state: { reviewQuestions: wrongQuestions },
+                                        })
+                                    }
+                                >
+                                    Powtórz błędy
+                                </SecondaryButton>
+                            ) : null}
+                            <SecondaryButton
+                                onClick={() => navigate(getLearningRoute(result.session.scope, result.session.scopeId))}
+                            >
+                                Wróć do nauki
+                            </SecondaryButton>
+                        </>
+                    }
+                >
+                    <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-3xl bg-atlas-50 px-4 py-4">
+                            <div className="text-xs font-bold tracking-[0.18em] text-atlas-700 uppercase">Skuteczność</div>
+                            <div className="mt-2 text-3xl font-extrabold text-ink-900">{percent}%</div>
+                        </div>
+                        <div className="rounded-3xl bg-atlas-50 px-4 py-4">
+                            <div className="text-xs font-bold tracking-[0.18em] text-atlas-700 uppercase">Dobre odpowiedzi</div>
+                            <div className="mt-2 text-3xl font-extrabold text-ink-900">{result.score}</div>
+                        </div>
+                        <div className="rounded-3xl bg-atlas-50 px-4 py-4">
+                            <div className="text-xs font-bold tracking-[0.18em] text-atlas-700 uppercase">Do poprawy</div>
+                            <div className="mt-2 text-3xl font-extrabold text-ink-900">{wrongAnswers.length}</div>
+                        </div>
                     </div>
-                ))}
-            </div>
+                </SectionCard>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 32, width: "100%", maxWidth: 320 }}>
-                <button
-                    onClick={() => navigate(-1)}
-                    style={buttonStyle(primaryGradient, "#fff")}
-                    onMouseEnter={(e) => handleHover(e, primaryHover)}
-                    onMouseLeave={(e) => handleLeave(e, primaryGradient)}
-                >
-                    Powtórz quiz
-                </button>
-
-                <button
-                    onClick={() => navigate("/")}
-                    style={buttonStyle(accentGradient, "#000")}
-                    onMouseEnter={(e) => handleHover(e, accentHover)}
-                    onMouseLeave={(e) => handleLeave(e, accentGradient)}
-                >
-                    Powrót do układów mięśni
-                </button>
+                <div className="grid gap-4">
+                    {wrongAnswers.length === 0 ? (
+                        <SectionCard
+                            eyebrow="Perfekcyjna runda"
+                            title="Nie masz żadnych błędów do przejrzenia"
+                            description="Ta sesja jest czysta. Jeśli chcesz podbić poziom, odpal inny tryb quizu albo przejdź do szerszego zakresu."
+                        />
+                    ) : (
+                        wrongAnswers.map((answer) => (
+                            <SectionCard
+                                key={answer.questionId}
+                                eyebrow="Do poprawy"
+                                title={answer.prompt}
+                                description={answer.explanation}
+                                className="border-coral-400/40"
+                            >
+                                <div className="space-y-2 text-sm leading-6 text-ink-500">
+                                    <p>
+                                        <span className="font-semibold text-ink-900">Twoja odpowiedź:</span>{" "}
+                                        {answer.selected}
+                                    </p>
+                                    <p>
+                                        <span className="font-semibold text-ink-900">Poprawna odpowiedź:</span>{" "}
+                                        {answer.correct}
+                                    </p>
+                                </div>
+                            </SectionCard>
+                        ))
+                    )}
+                </div>
             </div>
-        </div>
+        </Screen>
     );
-};
-
-export default QuizResultScreen;
+}
