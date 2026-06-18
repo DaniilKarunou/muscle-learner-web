@@ -1,108 +1,194 @@
-import React, { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { QuizData } from "../data/QuizData";
-import type { QuizQuestion } from "../model/QuizQuestion";
-import { Scope } from "../model/Scope";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { NavLink, useLocation, useNavigate, useParams } from "react-router-dom";
+import { createQuizSession, getQuizModeLabel, isQuizMode, quizModeList } from "../data/QuizData";
+import { cn } from "../lib/cn";
+import type { QuizAnswerRecord, QuizQuestion, QuizResultState } from "../model/Quiz";
+import { Scope, type Scope as ScopeType } from "../model/Scope";
+import BackButton from "./components/BackButton";
+import { SecondaryButton } from "./components/ActionButton";
+import EmptyState from "./components/EmptyState";
+import ProgressBar from "./components/ProgressBar";
+import QuizOption from "./components/QuizOption";
+import Screen from "./components/Screen";
+import StatBadge from "./components/StatBadge";
 
-interface AnswerRecord {
-    question: string;
-    selected: string;
-    correct: string;
+interface ReviewLocationState {
+    reviewQuestions?: QuizQuestion[];
 }
 
-const QuizScreen: React.FC = () => {
-    const { scope, id } = useParams<{ scope: string; id: string }>();
+function parseScope(scope: string | undefined): ScopeType | null {
+    if (scope === Scope.System || scope === Scope.Region || scope === Scope.SubGroup) {
+        return scope;
+    }
+
+    return null;
+}
+
+export default function QuizScreen() {
+    const { scope, id, mode } = useParams<{ scope: string; id: string; mode?: string }>();
+    const parsedScope = parseScope(scope);
+    const parsedMode = isQuizMode(mode) ? mode : "mixed";
+    const scopeId = Number(id);
     const navigate = useNavigate();
+    const location = useLocation();
+    const timerRef = useRef<number | null>(null);
+    const scoreRef = useRef(0);
+    const answersRef = useRef<QuizAnswerRecord[]>([]);
+    const reviewState = location.state as ReviewLocationState | null;
+
+    const [session] = useState(() => {
+        if (!parsedScope || Number.isNaN(scopeId)) {
+            return null;
+        }
+
+        return createQuizSession({
+            scope: parsedScope,
+            scopeId,
+            mode: parsedMode,
+            reviewQuestions: reviewState?.reviewQuestions,
+        });
+    });
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [score, setScore] = useState(0);
     const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-    const [answersHistory, setAnswersHistory] = useState<AnswerRecord[]>([]);
+    const [, setAnswers] = useState<QuizAnswerRecord[]>([]);
 
-    const scopeEnum: Scope | null =
-        scope === Scope.System ? Scope.System :
-            scope === Scope.Region ? Scope.Region :
-                scope === Scope.SubGroup ? Scope.SubGroup :
-                    null;
+    useEffect(() => {
+        return () => {
+            if (timerRef.current !== null) {
+                window.clearTimeout(timerRef.current);
+            }
+        };
+    }, []);
 
-    const questions: QuizQuestion[] = scopeEnum && id
-        ? QuizData.getQuestions(scopeEnum, Number(id), 10)
-        : [];
+    const currentQuestion = useMemo(() => session?.questions[currentIndex], [currentIndex, session]);
 
-    if (!scopeEnum || !id) return <div>Invalid quiz parameters</div>;
-    if (questions.length === 0) return <div>No questions available</div>;
-
-    const currentQuestion = questions[currentIndex];
+    if (!parsedScope || Number.isNaN(scopeId) || !session || session.questions.length === 0 || !currentQuestion) {
+        return (
+            <EmptyState
+                title="Nie udało się uruchomić quizu"
+                description="Ten tryb nie ma jeszcze dostępnych pytań albo adres quizu jest niepoprawny."
+                action={<SecondaryButton onClick={() => navigate("/")}>Wróć do atlasu</SecondaryButton>}
+            />
+        );
+    }
 
     const handleAnswer = (answer: string) => {
-        setSelectedAnswer(answer);
+        if (selectedAnswer) {
+            return;
+        }
+
         const isCorrect = answer === currentQuestion.correctAnswer;
-        if (isCorrect) setScore(score + 1);
-
-        // zapisz odpowiedź do historii
-        setAnswersHistory([...answersHistory, {
-            question: currentQuestion.question,
+        const nextRecord: QuizAnswerRecord = {
+            questionId: currentQuestion.id,
+            prompt: currentQuestion.prompt,
             selected: answer,
-            correct: currentQuestion.correctAnswer
-        }]);
-
-        setTimeout(() => {
-            setSelectedAnswer(null);
-            if (currentIndex < questions.length - 1) {
-                setCurrentIndex(currentIndex + 1);
-            } else {
-                navigate(`/quizResult/${score + (isCorrect ? 1 : 0)}/${questions.length}`, { state: { answersHistory: [...answersHistory, {
-                            question: currentQuestion.question,
-                            selected: answer,
-                            correct: currentQuestion.correctAnswer
-                        }] } });
-            }
-        }, 800);
-    };
-
-    const getButtonStyle = (opt: string) => {
-        const base = {
-            padding: "12px 16px",
-            borderRadius: 12,
-            border: "none",
-            fontWeight: 600,
-            cursor: "pointer",
-            transition: "all 0.3s ease",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-            textAlign: "left" as const,
+            correct: currentQuestion.correctAnswer,
+            explanation: currentQuestion.explanation,
+            muscleId: currentQuestion.muscleId,
+            muscleName: currentQuestion.muscleName,
+            kind: currentQuestion.kind,
         };
-        if (!selectedAnswer) return { ...base, background: "linear-gradient(135deg, #1976d2, #42a5f5)", color: "#fff" };
-        if (opt === currentQuestion.correctAnswer) return { ...base, background: "linear-gradient(135deg, #03dac6, #00bfa5)", color: "#000" };
-        if (opt === selectedAnswer) return { ...base, background: "linear-gradient(135deg, #b00020, #f44336)", color: "#fff" };
-        return { ...base, background: "#f0f0f0", color: "#000" };
+
+        setSelectedAnswer(answer);
+        setScore((value) => {
+            const nextValue = value + Number(isCorrect);
+            scoreRef.current = nextValue;
+            return nextValue;
+        });
+        setAnswers((value) => {
+            const nextValue = [...value, nextRecord];
+            answersRef.current = nextValue;
+            return nextValue;
+        });
+
+        timerRef.current = window.setTimeout(() => {
+            setSelectedAnswer(null);
+
+            if (currentIndex < session.questions.length - 1) {
+                setCurrentIndex((value) => value + 1);
+                return;
+            }
+
+            const resultState: QuizResultState = {
+                session,
+                answers: answersRef.current,
+                score: scoreRef.current,
+            };
+
+            navigate("/quiz-result", { state: resultState });
+        }, 750);
     };
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 24, width: "100%", maxWidth: 480, margin: "0 auto" }}>
-            <h2 style={{ color: "#1976d2", fontSize: "1.75rem", fontWeight: 700, textAlign: "center", marginBottom: 8 }}>
-                Pytanie {currentIndex + 1} / {questions.length}
-            </h2>
+        <Screen
+            eyebrow={parsedMode === "review" ? "Powtórka błędów" : "Interaktywny quiz"}
+            title={session.contextTitle}
+            subtitle="Jedna sesja, jeden zestaw pytań i pełne skupienie na tym, co naprawdę warto zapamiętać."
+            actions={
+                <>
+                    <BackButton fallbackTo="/" label="Wyjdź z quizu" />
+                    <StatBadge label="tryb" value={getQuizModeLabel(session.mode)} />
+                    <StatBadge label="pytań" value={session.questions.length} />
+                </>
+            }
+        >
+            {session.mode !== "review" ? (
+                <div className="surface-panel-subtle flex flex-wrap gap-2 p-3">
+                    {quizModeList
+                        .filter((entry) => entry !== "review")
+                        .map((entry) => (
+                            <NavLink
+                                key={entry}
+                                to={`/quiz/${parsedScope}/${scopeId}/${entry}`}
+                                className={({ isActive }) =>
+                                    cn(
+                                        "interactive-reset rounded-full px-4 py-2 text-sm font-semibold transition",
+                                        isActive ? "bg-ink-900 text-white" : "bg-white/70 text-ink-500 hover:bg-atlas-50",
+                                    )
+                                }
+                            >
+                                {getQuizModeLabel(entry)}
+                            </NavLink>
+                        ))}
+                </div>
+            ) : null}
 
-            <p style={{ fontWeight: 600, fontSize: "1.1rem", marginBottom: 16, color: "#1a1a1a", textAlign: "center" }}>
-                {currentQuestion.question}
-            </p>
+            <div className="surface-panel flex flex-col gap-5 px-5 py-6 sm:px-7">
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between text-sm font-semibold text-ink-500">
+                        <span>
+                            Pytanie {currentIndex + 1} z {session.questions.length}
+                        </span>
+                        <span>{score} pkt</span>
+                    </div>
+                    <ProgressBar value={currentIndex} max={session.questions.length} />
+                </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {currentQuestion.options.map((opt) => (
-                    <button
-                        key={opt}
-                        onClick={() => handleAnswer(opt)}
-                        style={getButtonStyle(opt)}
-                        disabled={!!selectedAnswer}
-                        onMouseEnter={(e) => { if (!selectedAnswer) e.currentTarget.style.background = "linear-gradient(135deg, #1565c0, #1e88e5)"; }}
-                        onMouseLeave={(e) => { if (!selectedAnswer) e.currentTarget.style.background = "linear-gradient(135deg, #1976d2, #42a5f5)"; }}
-                    >
-                        {opt}
-                    </button>
-                ))}
+                <div className="space-y-3">
+                    <div className="text-xs font-bold tracking-[0.2em] text-atlas-700 uppercase">
+                        {getQuizModeLabel(currentQuestion.kind)}
+                    </div>
+                    <h2 className="text-balance text-2xl font-bold text-ink-900">{currentQuestion.prompt}</h2>
+                </div>
+
+                <div className="grid gap-3">
+                    {currentQuestion.options.map((option) => (
+                        <QuizOption
+                            key={option}
+                            label={option}
+                            selectedAnswer={selectedAnswer}
+                            correctAnswer={currentQuestion.correctAnswer}
+                            onClick={() => handleAnswer(option)}
+                        />
+                    ))}
+                </div>
             </div>
-        </div>
-    );
-};
 
-export default QuizScreen;
+            <SecondaryButton block onClick={() => navigate("/")}>
+                Przerwij i wróć do atlasu
+            </SecondaryButton>
+        </Screen>
+    );
+}
