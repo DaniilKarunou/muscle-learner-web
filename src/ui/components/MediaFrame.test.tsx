@@ -27,18 +27,23 @@ describe("MediaFrame", () => {
         expect(screen.getByText("GIF")).toBeInTheDocument();
     });
 
-    it("prefers the first static image when image and gif are both available", () => {
+    it("renders an external source link when provided", () => {
         render(
             <MediaFrame
                 title="Mięsień testowy"
                 media={[
-                    { src: "/demo-image.png", kind: "image", alt: "Ilustracja testowa" },
-                    { src: "/demo.gif", kind: "gif", alt: "Animacja testowa" },
+                    {
+                        src: "/demo.png",
+                        kind: "image",
+                        alt: "Ilustracja testowa",
+                        sourceUrl: "https://example.com/source",
+                        caption: "Zewnętrzne źródło",
+                    },
                 ]}
             />,
         );
 
-        expect(screen.getByRole("img", { name: "Ilustracja testowa" })).toBeInTheDocument();
-        expect(screen.queryByRole("img", { name: "Animacja testowa" })).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /otwórz źródło/i })).toHaveAttribute("href", "https://example.com/source");
+        expect(screen.getByText("Zewnętrzne źródło")).toBeInTheDocument();
     });
 });

@@ -43,6 +43,22 @@ export default function MediaFrame({ media, title, className }: MediaFrameProps)
                     </div>
                 ) : null}
             </div>
+
+            {activeMedia?.caption || activeMedia?.sourceUrl ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-atlas-100 px-4 py-3 text-xs text-ink-500">
+                    <span>{activeMedia.caption ?? "Źródło ilustracyjne dla atlasu"}</span>
+                    {activeMedia.sourceUrl ? (
+                        <a
+                            href={activeMedia.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="interactive-reset font-semibold text-atlas-700 hover:text-atlas-600"
+                        >
+                            Otwórz źródło
+                        </a>
+                    ) : null}
+                </div>
+            ) : null}
         </div>
     );
 }

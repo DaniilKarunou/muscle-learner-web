@@ -7,6 +7,7 @@ export interface MuscleMedia {
     alt: string;
     placeholder?: boolean;
     caption?: string;
+    sourceUrl?: string;
 }
 
 export interface Muscle {
@@ -20,6 +21,7 @@ export interface Muscle {
     attachmentProximal: string;
     attachmentDistal: string;
     tags: string[];
+    actions?: string[];
     movementExamples?: string[];
     difficulty: MuscleDifficulty;
     media: MuscleMedia[];

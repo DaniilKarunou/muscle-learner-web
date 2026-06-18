@@ -16,6 +16,7 @@ describe("MuscleDetail", () => {
         expect(screen.getByRole("heading", { name: /mięsień mostkowo-obojczykowo-sutkowy/i })).toBeInTheDocument();
         expect(screen.getByText(/przyczep początkowy/i)).toBeInTheDocument();
         expect(screen.getByText(/jak ten mięsień pracuje w praktyce/i)).toBeInTheDocument();
+        expect(screen.getByText(/główne ruchy/i)).toBeInTheDocument();
         expect(screen.getByRole("img", { name: /mostkowo-obojczykowo-sutkowego/i })).toBeInTheDocument();
     });
 
